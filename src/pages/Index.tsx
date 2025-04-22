@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatPanel from '@/components/ChatPanel';
 import Terminal, { TerminalRefObject } from '@/components/Terminal';
@@ -9,7 +9,7 @@ import { Plus } from 'lucide-react';
 
 interface TerminalInstance {
   id: string;
-  ref: React.RefObject<TerminalRefObject>;
+  ref: React.RefObject<TerminalRefObject> | null;
 }
 
 export default function Index() {
@@ -24,7 +24,7 @@ export default function Index() {
       // Create the first terminal
       const firstTerminal: TerminalInstance = {
         id: '1',
-        ref: useRef(null)
+        ref: null
       };
       setTerminals([firstTerminal]);
     }
@@ -32,7 +32,7 @@ export default function Index() {
 
   const handleRunCommand = (command: string) => {
     const terminal = terminals.find(t => t.id === activeTerminal);
-    if (terminal?.ref.current) {
+    if (terminal?.ref?.current) {
       terminal.ref.current.executeCommand(command);
     }
   };
@@ -49,7 +49,7 @@ export default function Index() {
     const newId = (terminals.length + 1).toString();
     const newTerminal: TerminalInstance = {
       id: newId,
-      ref: useRef(null)
+      ref: null
     };
     setTerminals(prev => [...prev, newTerminal]);
     setActiveTerminal(newId);
@@ -137,7 +137,13 @@ export default function Index() {
                   className={`h-full ${activeTerminal === term.id ? 'block' : 'hidden'}`}
                 >
                   <Terminal 
-                    ref={term.ref} 
+                    ref={(instance) => { 
+                      // This is a callback ref which is allowed in React
+                      // It doesn't break the Rules of Hooks
+                      if (term) {
+                        term.ref = instance ? { current: instance } : null;
+                      }
+                    }} 
                   />
                 </div>
               ))}
