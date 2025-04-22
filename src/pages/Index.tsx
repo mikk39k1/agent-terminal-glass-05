@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatPanel from '@/components/ChatPanel';
 import Terminal, { TerminalRefObject } from '@/components/Terminal';
@@ -18,10 +18,12 @@ export default function Index() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   
+  // Create refs at the component top level
+  const initialTerminalRef = useRef<TerminalRefObject>(null);
+  
   // Initialize the first terminal on component mount
   useEffect(() => {
     if (terminals.length === 0) {
-      const initialTerminalRef = useRef<TerminalRefObject>(null);
       setTerminals([{ id: '1', ref: initialTerminalRef }]);
     }
   }, [terminals.length]);
@@ -43,6 +45,7 @@ export default function Index() {
 
   const addNewTerminal = () => {
     const newId = (terminals.length + 1).toString();
+    // Create a new ref for the new terminal
     const newTerminalRef = useRef<TerminalRefObject>(null);
     setTerminals(prev => [...prev, { id: newId, ref: newTerminalRef }]);
     setActiveTerminal(newId);
