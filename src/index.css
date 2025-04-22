@@ -37,14 +37,14 @@
 
     /* Terminal Colors */
     --terminal-bg: 0 0% 14%; /* #242423 */
-    --terminal-text: 0 0% 14%; /* Neon Green */
+    --terminal-text: 120 100% 50%; /* Neon Green */
     --terminal-border: 0 0% 20%;
     
     /* Chat Colors */
     --user-bubble: 43 94% 66%; /* #F5CB5C */
     --agent-bubble: 68 26% 87%; /* #E8EDDF */
     --code-block: 0 0% 93%;
-    --run-button: 0 0% 14%; /* Neon Green */
+    --run-button: 120 100% 50%; /* Neon Green */
   }
 
   .dark {
