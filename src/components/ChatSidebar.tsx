@@ -4,6 +4,7 @@ import { PlusCircle, ChevronRight, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ export default function ChatSidebar() {
   const [projectDescription, setProjectDescription] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchProjects();
@@ -93,12 +95,22 @@ export default function ChatSidebar() {
       return;
     }
 
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to create a project",
+      });
+      return;
+    }
+
     const { data, error } = await supabase
       .from('projects')
       .insert([
         {
           name: projectName,
           description: projectDescription,
+          user_id: user.id
         }
       ])
       .select()
@@ -124,6 +136,14 @@ export default function ChatSidebar() {
 
   const handleNewChat = async () => {
     if (!selectedProject) return;
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to create a chat",
+      });
+      return;
+    }
 
     const { data, error } = await supabase
       .from('chats')
@@ -131,6 +151,7 @@ export default function ChatSidebar() {
         {
           project_id: selectedProject,
           title: 'New Chat',
+          user_id: user.id
         }
       ])
       .select()
