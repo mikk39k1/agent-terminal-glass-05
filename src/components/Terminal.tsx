@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useWebContainer } from '@/hooks/useWebContainer';
 import { useToast } from '@/hooks/use-toast';
+import { WebContainerEditor } from '@/components/WebContainerEditor';
 
 interface TerminalProps {
   className?: string;
