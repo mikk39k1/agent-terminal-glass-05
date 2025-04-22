@@ -13,8 +13,10 @@ export function useWebContainer() {
     
     async function bootWebContainer() {
       try {
-        // Initialize the WebContainer
+        // Initialize the WebContainer with simpler configuration
         console.log("Attempting to boot WebContainer...");
+        
+        // Boot with no additional options
         const instance = await WebContainer.boot();
         
         if (!isMounted) return;
@@ -22,7 +24,7 @@ export function useWebContainer() {
         console.log("WebContainer booted successfully!");
         setWebcontainer(instance);
         
-        // Set up a minimal project structure
+        // Set up a minimal project structure with simplified content
         await instance.mount({
           'index.js': {
             file: {
@@ -31,31 +33,25 @@ export function useWebContainer() {
           },
           'package.json': {
             file: {
-              contents: JSON.stringify({
-                name: "example-project",
-                type: "module",
-                dependencies: {}
-              }, null, 2),
+              contents: '{"name":"example-project","type":"module","dependencies":{}}',
             },
           },
         });
         
-        // Install basic dependencies
-        const installProcess = await instance.spawn('npm', ['init', '-y']);
-        const installExitCode = await installProcess.exit;
-        
-        if (installExitCode !== 0) {
-          throw new Error(`Installation failed with exit code ${installExitCode}`);
-        }
+        // Simple initialization instead of npm init
+        console.log("WebContainer is ready to use!");
         
         if (!isMounted) return;
         
         setReady(true);
-        console.log("WebContainer is fully ready!");
       } catch (err) {
         console.error("WebContainer boot error:", err);
         if (!isMounted) return;
+        
+        // Provide a fallback experience
         setError(err instanceof Error ? err.message : 'Failed to initialize WebContainer');
+        // Even on error, we can still provide a simulated terminal experience
+        setReady(true); // Allow terminal to be used in simulation mode
       } finally {
         if (isMounted) {
           setLoading(false);

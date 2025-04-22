@@ -27,7 +27,7 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
 
   useEffect(() => {
     if (error) {
-      setOutput(prev => [...prev, `Error initializing WebContainer: ${error}`, '> ']);
+      setOutput(prev => [...prev, `WebContainer error: ${error}`, 'Continuing in simulation mode...', '> ']);
       console.error("WebContainer error:", error);
     } else if (!loading && ready && webcontainer) {
       setOutput(prev => [...prev, 'WebContainer is ready! You can run Node.js commands.', '> ']);
@@ -45,85 +45,91 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
     
     setOutput(prev => [...prev, `$ ${cmd}`]);
     setCommandHistory(prev => [...prev, cmd]);
+    setHistoryIndex(-1);
     
-    if (!webcontainer || !ready) {
-      setOutput(prev => [...prev, 'WebContainer not ready yet. Please wait...', '> ']);
+    if (cmd === 'clear') {
+      setOutput(['> ']);
       return;
     }
+    
+    // If WebContainer is available and ready, try to use it
+    if (webcontainer && ready && !error) {
+      try {
+        if (cmd.startsWith('node ') || cmd === 'node') {
+          console.log("Executing Node command:", cmd);
+          const cmdParts = cmd.split(' ');
+          const process = await webcontainer.spawn('node', cmdParts.slice(1));
+          
+          let processOutput = '';
+          process.output.pipeTo(
+            new WritableStream({
+              write(chunk) {
+                processOutput += chunk;
+                setOutput(prev => [...prev, chunk]);
+              }
+            })
+          );
+          
+          const exitCode = await process.exit;
+          if (processOutput.trim() === '') {
+            setOutput(prev => [...prev, `Command completed with exit code ${exitCode}`, '> ']);
+          } else {
+            setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
+          }
+        } else if (cmd.startsWith('npm ')) {
+          console.log("Executing NPM command:", cmd);
+          const cmdParts = cmd.split(' ');
+          const process = await webcontainer.spawn('npm', cmdParts.slice(1));
+          
+          process.output.pipeTo(
+            new WritableStream({
+              write(chunk) {
+                setOutput(prev => [...prev, chunk]);
+              }
+            })
+          );
+          
+          const exitCode = await process.exit;
+          setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
+        } else {
+          // Fallback to simulation
+          simulateCommand(cmd);
+        }
+      } catch (err) {
+        console.error("Command execution error:", err);
+        setOutput(prev => [...prev, `Error: ${err instanceof Error ? err.message : 'Unknown error'}`, '> ']);
+      }
+    } else {
+      // Run in simulation mode if WebContainer is not available
+      simulateCommand(cmd);
+    }
+  };
 
-    try {
-      if (cmd === 'clear') {
-        setOutput(['> ']);
-        return;
+  const simulateCommand = (cmd: string) => {
+    setTimeout(() => {
+      let commandOutput: string[] = [];
+      
+      if (cmd.includes('ls')) {
+        commandOutput = ['app.js', 'package.json', 'node_modules/', 'README.md'];
+      } else if (cmd.includes('docker')) {
+        commandOutput = [
+          'CONTAINER ID   IMAGE          COMMAND        CREATED       STATUS       PORTS                    NAMES',
+          'a1b2c3d4e5f6   nginx:latest   "/docker-..."  2 hours ago   Up 2 hours   0.0.0.0:8080->80/tcp     web-server',
+          '1a2b3c4d5e6f   mongo:latest   "docker-..."   3 hours ago   Up 3 hours   0.0.0.0:27017->27017/tcp mongodb'
+        ];
+      } else if (cmd.includes('git')) {
+        commandOutput = ['On branch main', 'Your branch is up to date with \'origin/main\'.', 'nothing to commit, working tree clean'];
+      } else if (cmd.includes('kubectl')) {
+        commandOutput = ['NAME                     READY   STATUS    RESTARTS   AGE', 
+          'api-deployment-5d4b9f    1/1     Running   0          7d',
+          'db-statefulset-0          1/1     Running   0          7d',
+          'redis-deployment-8f7c6c   1/1     Running   0          7d'];
+      } else {
+        commandOutput = [`Simulated: ${cmd}`, 'Command executed in simulation mode.'];
       }
       
-      if (cmd.startsWith('node ') || cmd === 'node') {
-        console.log("Executing Node command:", cmd);
-        const cmdParts = cmd.split(' ');
-        const process = await webcontainer.spawn('node', cmdParts.slice(1));
-        
-        let processOutput = '';
-        process.output.pipeTo(
-          new WritableStream({
-            write(chunk) {
-              processOutput += chunk;
-              setOutput(prev => [...prev, chunk]);
-            }
-          })
-        );
-        
-        const exitCode = await process.exit;
-        if (processOutput.trim() === '') {
-          setOutput(prev => [...prev, `Command completed with exit code ${exitCode}`, '> ']);
-        } else {
-          setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
-        }
-      } else if (cmd.startsWith('npm ')) {
-        console.log("Executing NPM command:", cmd);
-        const cmdParts = cmd.split(' ');
-        const process = await webcontainer.spawn('npm', cmdParts.slice(1));
-        
-        process.output.pipeTo(
-          new WritableStream({
-            write(chunk) {
-              setOutput(prev => [...prev, chunk]);
-            }
-          })
-        );
-        
-        const exitCode = await process.exit;
-        setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
-      } else {
-        // Simulate commands for demo purposes
-        setTimeout(() => {
-          let commandOutput: string[] = [];
-          
-          if (cmd.includes('ls')) {
-            commandOutput = ['app.js', 'package.json', 'node_modules/', 'README.md'];
-          } else if (cmd.includes('docker')) {
-            commandOutput = [
-              'CONTAINER ID   IMAGE          COMMAND        CREATED       STATUS       PORTS                    NAMES',
-              'a1b2c3d4e5f6   nginx:latest   "/docker-..."  2 hours ago   Up 2 hours   0.0.0.0:8080->80/tcp     web-server',
-              '1a2b3c4d5e6f   mongo:latest   "docker-..."   3 hours ago   Up 3 hours   0.0.0.0:27017->27017/tcp mongodb'
-            ];
-          } else if (cmd.includes('git')) {
-            commandOutput = ['On branch main', 'Your branch is up to date with \'origin/main\'.', 'nothing to commit, working tree clean'];
-          } else if (cmd.includes('kubectl')) {
-            commandOutput = ['NAME                     READY   STATUS    RESTARTS   AGE', 
-              'api-deployment-5d4b9f    1/1     Running   0          7d',
-              'db-statefulset-0          1/1     Running   0          7d',
-              'redis-deployment-8f7c6c   1/1     Running   0          7d'];
-          } else {
-            commandOutput = ['Command executed in simulated environment.'];
-          }
-          
-          setOutput(prev => [...prev, ...commandOutput, '> ']);
-        }, 500);
-      }
-    } catch (err) {
-      console.error("Command execution error:", err);
-      setOutput(prev => [...prev, `Error: ${err instanceof Error ? err.message : 'Unknown error'}`, '> ']);
-    }
+      setOutput(prev => [...prev, ...commandOutput, '> ']);
+    }, 300);
   };
 
   useImperativeHandle(ref, () => ({
@@ -158,7 +164,9 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
   return (
     <div className={`flex flex-col h-full ${className}`}>
       <div className="flex items-center justify-between p-3 border-b border-terminal-border">
-        <h2 className="font-medium">Terminal {ready ? '(WebContainer Ready)' : '(Initializing...)'}</h2>
+        <h2 className="font-medium">
+          Terminal {error ? '(Simulation Mode)' : ready ? '(WebContainer Ready)' : '(Initializing...)'}
+        </h2>
       </div>
       
       <div 
