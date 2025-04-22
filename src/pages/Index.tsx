@@ -18,15 +18,11 @@ export default function Index() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   
-  // Initialize the first terminal reference outside of any hooks
-  // This fixes the React hooks violation
+  // Initialize the first terminal on component mount
   useEffect(() => {
-    // Only initialize terminals if they don't exist yet
     if (terminals.length === 0) {
-      setTerminals([{ 
-        id: '1', 
-        ref: useRef<TerminalRefObject>(null) 
-      }]);
+      const initialTerminalRef = useRef<TerminalRefObject>(null);
+      setTerminals([{ id: '1', ref: initialTerminalRef }]);
     }
   }, [terminals.length]);
 
@@ -47,7 +43,6 @@ export default function Index() {
 
   const addNewTerminal = () => {
     const newId = (terminals.length + 1).toString();
-    // Create the new ref outside of the state update
     const newTerminalRef = useRef<TerminalRefObject>(null);
     setTerminals(prev => [...prev, { id: newId, ref: newTerminalRef }]);
     setActiveTerminal(newId);
