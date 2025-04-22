@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatPanel from '@/components/ChatPanel';
@@ -18,10 +17,8 @@ export default function Index() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   
-  // Initialize the first terminal on component mount
   useEffect(() => {
     if (terminals.length === 0) {
-      // Create the first terminal
       const firstTerminal: TerminalInstance = {
         id: '1',
         ref: null
@@ -55,7 +52,16 @@ export default function Index() {
     setActiveTerminal(newId);
   }, [terminals.length]);
 
-  // Add keyboard shortcut to close sidebar with Escape key
+  const removeTerminal = useCallback((terminalId: string) => {
+    setTerminals(prev => {
+      const newTerminals = prev.filter(t => t.id !== terminalId);
+      if (activeTerminal === terminalId && newTerminals.length > 0) {
+        setActiveTerminal(newTerminals[newTerminals.length - 1].id);
+      }
+      return newTerminals;
+    });
+  }, [activeTerminal]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && showSidebar) {
@@ -69,7 +75,6 @@ export default function Index() {
 
   return (
     <div className="h-screen flex flex-col lg:flex-row overflow-hidden">
-      {/* Mobile Sidebar - Slide in from left on mobile only */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 lg:hidden ${
         showSidebar ? 'translate-x-0' : '-translate-x-full'
       }`}>
@@ -86,15 +91,11 @@ export default function Index() {
       </div>
 
       <ResizablePanelGroup direction="horizontal">
-        {/* Main Content */}
         <ResizablePanel defaultSize={70} minSize={30}>
           <div className="w-full h-full flex flex-col lg:flex-row">
-            {/* Sidebar (20% of left column) - Desktop only */}
             <div className="hidden lg:block w-[20%] h-full">
               <ChatSidebar onChatSelect={handleChatSelect} />
             </div>
-
-            {/* Chat Panel (80% of left column or full width on mobile) */}
             <div className="w-full lg:w-[80%] h-full border-r border-border">
               <ChatPanel onRunCommand={handleRunCommand} selectedChat={selectedChat} />
             </div>
@@ -103,21 +104,30 @@ export default function Index() {
 
         <ResizableHandle withHandle />
 
-        {/* Right Column - Terminal (30% on desktop, 50% height on mobile) */}
         <ResizablePanel defaultSize={30} minSize={20}>
           <div className="w-full h-full flex flex-col">
-            {/* Terminal tabs */}
             <div className="flex items-center gap-2 p-2 border-b border-border bg-background">
               {terminals.map((term) => (
-                <Button
-                  key={term.id}
-                  variant={activeTerminal === term.id ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setActiveTerminal(term.id)}
-                  className="px-3 py-1"
-                >
-                  Terminal {term.id}
-                </Button>
+                <div key={term.id} className="relative group">
+                  <Button
+                    variant={activeTerminal === term.id ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setActiveTerminal(term.id)}
+                    className="px-3 py-1 pr-8"
+                  >
+                    Terminal {term.id}
+                  </Button>
+                  {terminals.length > 1 && (
+                    <button
+                      onClick={() => removeTerminal(term.id)}
+                      className="absolute top-1/2 right-1 -translate-y-1/2 opacity-0 group-hover:opacity-100 hover:text-destructive"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
               ))}
               <Button
                 variant="ghost"
@@ -129,7 +139,6 @@ export default function Index() {
               </Button>
             </div>
             
-            {/* Active terminal */}
             <div className="flex-1">
               {terminals.map((term) => (
                 <div
@@ -138,8 +147,6 @@ export default function Index() {
                 >
                   <Terminal 
                     ref={(instance) => { 
-                      // This is a callback ref which is allowed in React
-                      // It doesn't break the Rules of Hooks
                       if (term) {
                         term.ref = instance ? { current: instance } : null;
                       }

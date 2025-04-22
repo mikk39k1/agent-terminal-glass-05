@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PlusCircle, ChevronRight, LogOut } from 'lucide-react';
+import { PlusCircle, ChevronRight, LogOut, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +13,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Project {
   id: string;
@@ -39,6 +50,8 @@ export default function ChatSidebar({ onChatSelect }: ChatSidebarProps) {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
+  const [editingChat, setEditingChat] = useState<Chat | null>(null);
+  const [newChatTitle, setNewChatTitle] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -178,6 +191,59 @@ export default function ChatSidebar({ onChatSelect }: ChatSidebarProps) {
     }
   };
 
+  const handleUpdateChat = async () => {
+    if (!editingChat || !newChatTitle.trim()) return;
+
+    const { error } = await supabase
+      .from('chats')
+      .update({ title: newChatTitle })
+      .eq('id', editingChat.id);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update chat",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Chat updated successfully",
+      });
+      setEditingChat(null);
+      setNewChatTitle('');
+      if (selectedProject) {
+        fetchChats(selectedProject);
+      }
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    const { error } = await supabase
+      .from('chats')
+      .delete()
+      .eq('id', chatId);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete chat",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Chat deleted successfully",
+      });
+      if (selectedProject) {
+        fetchChats(selectedProject);
+      }
+      if (selectedChat === chatId) {
+        onChatSelect(null);
+      }
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate('/auth');
@@ -259,20 +325,80 @@ export default function ChatSidebar({ onChatSelect }: ChatSidebarProps) {
               <ul className="space-y-1">
                 {chats.map(chat => (
                   <li key={chat.id}>
-                    <button
-                      onClick={() => setSelectedChat(chat.id)}
-                      className={`w-full text-left p-2 rounded-md text-sm flex items-center justify-between group hover:bg-accent/20 transition-colors ${
-                        selectedChat === chat.id ? 'bg-accent/20 font-medium' : ''
-                      }`}
-                    >
-                      <div className="truncate">
-                        <span>{chat.title}</span>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(chat.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 text-muted-foreground" />
-                    </button>
+                    <div className="group flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedChat(chat.id)}
+                        className={`flex-1 text-left p-2 rounded-md text-sm flex items-center justify-between group hover:bg-accent/20 transition-colors ${
+                          selectedChat === chat.id ? 'bg-accent/20 font-medium' : ''
+                        }`}
+                      >
+                        <div className="truncate">
+                          <span>{chat.title}</span>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(chat.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 text-muted-foreground" />
+                      </button>
+                      
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100"
+                            onClick={() => {
+                              setEditingChat(chat);
+                              setNewChatTitle(chat.title);
+                            }}
+                          >
+                            <Edit size={14} />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Edit Chat Title</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <Input
+                              placeholder="Chat Title"
+                              value={newChatTitle}
+                              onChange={(e) => setNewChatTitle(e.target.value)}
+                            />
+                            <Button onClick={handleUpdateChat} className="w-full">
+                              Update Chat
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the chat
+                              and all its messages.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteChat(chat.id)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </li>
                 ))}
               </ul>
