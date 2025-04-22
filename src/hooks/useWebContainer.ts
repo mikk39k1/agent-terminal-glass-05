@@ -23,7 +23,13 @@ export function useWebContainer() {
         console.log("Attempting to boot WebContainer...");
         
         // Boot WebContainer following the documentation
-        const instance = await WebContainer.boot();
+        let instance: WebContainer;
+        try {
+          instance = await WebContainer.boot();
+        } catch (bootError) {
+          console.error("WebContainer boot error:", bootError);
+          throw new Error(bootError instanceof Error ? bootError.message : 'WebContainer boot failed');
+        }
         
         if (!isMounted) return;
         
@@ -31,33 +37,51 @@ export function useWebContainer() {
         setWebcontainer(instance);
         
         // Set up a minimal project structure
-        await instance.mount({
-          'index.js': {
-            file: {
-              contents: 'console.log("Hello from WebContainer!");',
+        try {
+          await instance.mount({
+            'index.js': {
+              file: {
+                contents: 'console.log("Hello from WebContainer!");',
+              },
             },
-          },
-          'package.json': {
-            file: {
-              contents: JSON.stringify({
+            'package.json': {
+              file: {
+                contents: JSON.stringify({
+                  name: "webcontainer-project",
+                  type: "module",
+                  dependencies: {}
+                }, null, 2),
+              },
+            },
+          });
+          
+          console.log("Files mounted in WebContainer.");
+        } catch (mountError) {
+          console.error("Failed to mount files:", mountError);
+          throw new Error('Failed to mount files in WebContainer');
+        }
+        
+        // Create a basic package.json if one doesn't exist
+        try {
+          const packageJsonProcess = await instance.spawn('node', ['-e', `
+            const fs = require('fs');
+            if (!fs.existsSync('package.json')) {
+              fs.writeFileSync('package.json', JSON.stringify({
                 name: "webcontainer-project",
                 type: "module",
                 dependencies: {}
-              }, null, 2),
-            },
-          },
-        });
-        
-        console.log("Files mounted in WebContainer.");
-        
-        // Initialize a basic npm project
-        try {
-          const initProcess = await instance.spawn('npm', ['init', '-y']);
-          await initProcess.exit;
-          console.log("npm init completed.");
-        } catch (initError) {
-          console.warn("Could not run npm init:", initError);
-          // Continue even if npm init fails
+              }, null, 2));
+              console.log("Created package.json");
+            } else {
+              console.log("package.json already exists");
+            }
+          `]);
+          
+          await packageJsonProcess.exit;
+          console.log("Package.json check completed.");
+        } catch (pkgError) {
+          console.warn("Could not verify package.json:", pkgError);
+          // Continue even if this fails
         }
         
         if (!isMounted) return;
