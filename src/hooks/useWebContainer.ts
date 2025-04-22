@@ -7,17 +7,30 @@ export function useWebContainer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [simulationMode, setSimulationMode] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     
     async function bootWebContainer() {
       try {
-        // Initialize the WebContainer with simpler configuration
+        // Check if we're in an environment that supports WebContainer
+        // This helps prevent the DataCloneError in unsupported environments
+        const isWebContainerSupported = 'serviceWorker' in navigator && 
+                                        window.isSecureContext && 
+                                        !window.crossOriginIsolated;
+        
+        if (!isWebContainerSupported) {
+          throw new Error('WebContainer is not supported in this environment');
+        }
+        
         console.log("Attempting to boot WebContainer...");
         
-        // Boot with no additional options
-        const instance = await WebContainer.boot();
+        // Boot with simpler configuration
+        const instance = await WebContainer.boot({
+          // Use minimal options to avoid cloning issues
+          workdirName: 'webcontainer-workspace'
+        });
         
         if (!isMounted) return;
         
@@ -38,19 +51,18 @@ export function useWebContainer() {
           },
         });
         
-        // Simple initialization instead of npm init
         console.log("WebContainer is ready to use!");
         
         if (!isMounted) return;
         
         setReady(true);
       } catch (err) {
-        console.error("WebContainer boot error:", err);
+        console.error("Error initializing WebContainer:", err);
         if (!isMounted) return;
         
-        // Provide a fallback experience
-        setError(err instanceof Error ? err.message : 'Failed to initialize WebContainer');
-        // Even on error, we can still provide a simulated terminal experience
+        // Set error message and enable simulation mode
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setSimulationMode(true);
         setReady(true); // Allow terminal to be used in simulation mode
       } finally {
         if (isMounted) {
@@ -66,5 +78,5 @@ export function useWebContainer() {
     };
   }, []);
 
-  return { webcontainer, loading, error, ready };
+  return { webcontainer, loading, error, ready, simulationMode };
 }
