@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { InfoIcon } from 'lucide-react';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -13,18 +15,70 @@ export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleAuth = async (isSignUp: boolean) => {
+  const handleSignUp = async () => {
     try {
       setLoading(true);
-      const { error } = isSignUp 
-        ? await supabase.auth.signUp({ email, password })
-        : await supabase.auth.signInWithPassword({ email, password });
+      
+      // Validate inputs
+      if (!email || !password) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Email and password are required",
+        });
+        return;
+      }
+      
+      // Sign up with email and password
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
+      });
 
       if (error) throw error;
       
       toast({
-        title: isSignUp ? "Account created!" : "Welcome back!",
-        description: isSignUp ? "Please check your email to verify your account." : "Successfully signed in.",
+        title: "Account created!",
+        description: "Please check your email to verify your account.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignIn = async () => {
+    try {
+      setLoading(true);
+      
+      // Validate inputs
+      if (!email || !password) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Email and password are required",
+        });
+        return;
+      }
+      
+      const { error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
+
+      if (error) throw error;
+      
+      toast({
+        title: "Welcome back!",
+        description: "Successfully signed in.",
       });
       
       navigate('/');
@@ -46,6 +100,15 @@ export default function Auth() {
           <h2 className="text-2xl font-bold">Welcome to DevOps Agent</h2>
           <p className="text-muted-foreground">Sign in or create an account to continue</p>
         </div>
+        
+        <Alert className="bg-primary/10 border-primary/20 mb-4">
+          <InfoIcon className="h-4 w-4" />
+          <AlertTitle>For new users</AlertTitle>
+          <AlertDescription>
+            After signing up, you'll need to verify your email before logging in.
+          </AlertDescription>
+        </Alert>
+        
         <div className="space-y-4">
           <Input
             type="email"
@@ -62,18 +125,18 @@ export default function Auth() {
           <div className="space-y-2">
             <Button
               className="w-full"
-              onClick={() => handleAuth(false)}
+              onClick={handleSignIn}
               disabled={loading}
             >
-              Sign In
+              {loading ? 'Processing...' : 'Sign In'}
             </Button>
             <Button
               className="w-full"
               variant="outline"
-              onClick={() => handleAuth(true)}
+              onClick={handleSignUp}
               disabled={loading}
             >
-              Sign Up
+              {loading ? 'Processing...' : 'Sign Up'}
             </Button>
           </div>
         </div>
