@@ -164,28 +164,52 @@ export default function ChatSidebar({ onChatSelect }: ChatSidebarProps) {
   };
 
   const handleDeleteChat = async (chatId: string) => {
-    const { error } = await supabase
-      .from('chats')
-      .delete()
-      .eq('id', chatId);
+    try {
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('chat_id', chatId);
 
-    if (error) {
+      if (messagesError) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to delete chat messages",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('chats')
+        .delete()
+        .eq('id', chatId);
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to delete chat",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Chat deleted successfully",
+        });
+        if (selectedProject) {
+          fetchChats(selectedProject);
+        }
+        if (selectedChat === chatId) {
+          setSelectedChat(null);
+          onChatSelect(null);
+        }
+      }
+    } catch (error) {
+      console.error("Error deleting chat:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to delete chat",
+        description: "An unexpected error occurred",
       });
-    } else {
-      toast({
-        title: "Success",
-        description: "Chat deleted successfully",
-      });
-      if (selectedProject) {
-        fetchChats(selectedProject);
-      }
-      if (selectedChat === chatId) {
-        onChatSelect(null);
-      }
     }
   };
 
