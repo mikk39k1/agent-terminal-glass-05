@@ -1,0 +1,88 @@
+
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+
+interface TerminalProps {
+  className?: string;
+}
+
+export interface TerminalRefObject {
+  executeCommand: (cmd: string) => void;
+}
+
+const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' }, ref) => {
+  const [output, setOutput] = useState<string[]>([
+    '> DevOps Agent Terminal v1.0.0',
+    '> Type or run commands to interact with your environment',
+    '> '
+  ]);
+  const [command, setCommand] = useState('');
+  const terminalOutputRef = useRef<HTMLDivElement>(null);
+  
+  // Auto-scroll to bottom when output changes
+  useEffect(() => {
+    if (terminalOutputRef.current) {
+      terminalOutputRef.current.scrollTop = terminalOutputRef.current.scrollHeight;
+    }
+  }, [output]);
+  
+  // Function to execute a command
+  const executeCommand = (cmd: string) => {
+    // Add command to output
+    setOutput(prev => [...prev, `$ ${cmd}`]);
+    
+    // Simulate command execution with fake output
+    setTimeout(() => {
+      let commandOutput: string[] = [];
+      
+      // Simple command simulation
+      if (cmd.includes('ls')) {
+        commandOutput = ['app.js', 'package.json', 'node_modules/', 'README.md'];
+      } else if (cmd.includes('docker')) {
+        commandOutput = [
+          'CONTAINER ID   IMAGE          COMMAND        CREATED       STATUS       PORTS                    NAMES',
+          'a1b2c3d4e5f6   nginx:latest   "/docker-..."  2 hours ago   Up 2 hours   0.0.0.0:8080->80/tcp     web-server',
+          '1a2b3c4d5e6f   mongo:latest   "docker-..."   3 hours ago   Up 3 hours   0.0.0.0:27017->27017/tcp mongodb'
+        ];
+      } else if (cmd.includes('git')) {
+        commandOutput = ['On branch main', 'Your branch is up to date with \'origin/main\'.', 'nothing to commit, working tree clean'];
+      } else if (cmd.includes('kubectl')) {
+        commandOutput = ['NAME                     READY   STATUS    RESTARTS   AGE', 
+          'api-deployment-5d4b9f    1/1     Running   0          7d',
+          'db-statefulset-0          1/1     Running   0          7d',
+          'redis-deployment-8f7c6c   1/1     Running   0          7d'];
+      } else {
+        commandOutput = ['Command executed successfully.'];
+      }
+      
+      // Update output with command result
+      setOutput(prev => [...prev, ...commandOutput, '> ']);
+    }, 500);
+  };
+  
+  // Expose the executeCommand method via ref
+  useImperativeHandle(ref, () => ({
+    executeCommand
+  }));
+  
+  return (
+    <div className={`flex flex-col h-full ${className}`}>
+      <div className="flex items-center justify-between p-3 border-b border-terminal-border">
+        <h2 className="font-medium">Terminal</h2>
+      </div>
+      
+      <div 
+        ref={terminalOutputRef}
+        className="flex-1 bg-terminal p-4 font-mono text-sm text-terminal-text overflow-y-auto terminal-shadow"
+      >
+        {output.map((line, index) => (
+          <div key={index} className="whitespace-pre-wrap mb-1">
+            {line}
+            {index === output.length - 1 && <span className="inline-block w-2 h-4 ml-1 bg-terminal-text animate-blink" />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+export default Terminal;
