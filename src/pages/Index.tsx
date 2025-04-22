@@ -13,12 +13,22 @@ interface TerminalInstance {
 }
 
 export default function Index() {
-  const [terminals, setTerminals] = useState<TerminalInstance[]>([
-    { id: '1', ref: useRef<TerminalRefObject>(null) }
-  ]);
+  const [terminals, setTerminals] = useState<TerminalInstance[]>([]);
   const [activeTerminal, setActiveTerminal] = useState('1');
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  
+  // Initialize the first terminal reference outside of any hooks
+  // This fixes the React hooks violation
+  useEffect(() => {
+    // Only initialize terminals if they don't exist yet
+    if (terminals.length === 0) {
+      setTerminals([{ 
+        id: '1', 
+        ref: useRef<TerminalRefObject>(null) 
+      }]);
+    }
+  }, [terminals.length]);
 
   const handleRunCommand = (command: string) => {
     const terminal = terminals.find(t => t.id === activeTerminal);
@@ -37,7 +47,9 @@ export default function Index() {
 
   const addNewTerminal = () => {
     const newId = (terminals.length + 1).toString();
-    setTerminals(prev => [...prev, { id: newId, ref: useRef<TerminalRefObject>(null) }]);
+    // Create the new ref outside of the state update
+    const newTerminalRef = useRef<TerminalRefObject>(null);
+    setTerminals(prev => [...prev, { id: newId, ref: newTerminalRef }]);
     setActiveTerminal(newId);
   };
 
