@@ -27,13 +27,13 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
 
   useEffect(() => {
     if (error) {
-      setOutput(prev => [...prev, `Error initializing WebContainer: ${error}`, '> ']);
-      console.error("WebContainer error:", error);
+      setOutput(prev => [...prev, `Error initializing WebContainer: ${error}`, 'Using simulation mode for commands.', '> ']);
+      console.warn("WebContainer error:", error);
     } else if (!loading && ready) {
       if (simulationMode) {
-        setOutput(prev => [...prev, 'WebContainer not available. Running in simulation mode.', '> ']);
+        setOutput(prev => [...prev, 'WebContainer not available due to browser restrictions.', 'Running in simulation mode. Commands are simulated.', '> ']);
       } else if (webcontainer) {
-        setOutput(prev => [...prev, 'WebContainer is ready! You can run Node.js commands.', '> ']);
+        setOutput(prev => [...prev, 'WebContainer is ready! You can run Node.js and npm commands.', '> ']);
       }
     }
   }, [loading, error, ready, webcontainer, simulationMode]);
@@ -96,8 +96,26 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
           const exitCode = await process.exit;
           setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
         } else {
-          // Fallback to simulation for unsupported commands
-          simulateCommand(cmd);
+          // Try to run the command directly
+          try {
+            const cmdParts = cmd.split(' ');
+            const process = await webcontainer.spawn(cmdParts[0], cmdParts.slice(1));
+            
+            process.output.pipeTo(
+              new WritableStream({
+                write(chunk) {
+                  setOutput(prev => [...prev, chunk]);
+                }
+              })
+            );
+            
+            const exitCode = await process.exit;
+            setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
+          } catch (err) {
+            // Fallback to simulation for unsupported commands
+            console.warn(`Command '${cmd}' not supported, falling back to simulation:`, err);
+            simulateCommand(cmd);
+          }
         }
       } catch (err) {
         console.error("Command execution error:", err);
@@ -131,7 +149,29 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
       } else if (cmd.startsWith('node ')) {
         commandOutput = ['[Simulated Node.js execution]', `Executed: ${cmd}`, 'Hello from simulated Node.js!'];
       } else if (cmd.startsWith('npm ')) {
-        commandOutput = ['[Simulated NPM execution]', `> ${cmd}`, '', '+ package@1.0.0', 'added 1 package in 0.5s'];
+        if (cmd.includes('install') || cmd.includes('i ')) {
+          commandOutput = [
+            '[Simulated NPM execution]',
+            `> ${cmd}`,
+            '',
+            'added 123 packages in 2.5s',
+            '25 packages are looking for funding',
+            '  run `npm fund` for details'
+          ];
+        } else if (cmd.includes('run')) {
+          commandOutput = [
+            '[Simulated NPM execution]',
+            `> ${cmd}`,
+            '',
+            '> project@1.0.0 start',
+            '> node index.js',
+            '',
+            'Server running at http://localhost:3000',
+            'Ready for connections'
+          ];
+        } else {
+          commandOutput = ['[Simulated NPM execution]', `> ${cmd}`, '', '+ package@1.0.0', 'added 1 package in 0.5s'];
+        }
       } else {
         commandOutput = [`Simulated: ${cmd}`, 'Command executed in simulation mode.'];
       }
