@@ -3,26 +3,44 @@ import { useState, useRef, useEffect } from 'react';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatPanel from '@/components/ChatPanel';
 import Terminal, { TerminalRefObject } from '@/components/Terminal';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+
+interface TerminalInstance {
+  id: string;
+  ref: React.RefObject<TerminalRefObject>;
+}
 
 export default function Index() {
-  const terminalRef = useRef<TerminalRefObject>(null);
+  const [terminals, setTerminals] = useState<TerminalInstance[]>([
+    { id: '1', ref: useRef<TerminalRefObject>(null) }
+  ]);
+  const [activeTerminal, setActiveTerminal] = useState('1');
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
-  
+
   const handleRunCommand = (command: string) => {
-    if (terminalRef.current) {
-      terminalRef.current.executeCommand(command);
+    const terminal = terminals.find(t => t.id === activeTerminal);
+    if (terminal?.ref.current) {
+      terminal.ref.current.executeCommand(command);
     }
   };
-  
+
   const handleChatSelect = (chatId: string | null) => {
     setSelectedChat(chatId);
   };
-  
+
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
   };
-  
+
+  const addNewTerminal = () => {
+    const newId = (terminals.length + 1).toString();
+    setTerminals(prev => [...prev, { id: newId, ref: useRef<TerminalRefObject>(null) }]);
+    setActiveTerminal(newId);
+  };
+
   // Add keyboard shortcut to close sidebar with Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -30,11 +48,11 @@ export default function Index() {
         setShowSidebar(false);
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showSidebar]);
-  
+
   return (
     <div className="h-screen flex flex-col lg:flex-row overflow-hidden">
       {/* Mobile Sidebar - Slide in from left on mobile only */}
@@ -53,23 +71,64 @@ export default function Index() {
         </button>
       </div>
 
-      {/* Main Content */}
-      <div className="w-full lg:w-[70%] h-1/2 lg:h-full flex flex-col lg:flex-row">
-        {/* Sidebar (20% of left column) - Desktop only */}
-        <div className="hidden lg:block w-[20%] h-full">
-          <ChatSidebar onChatSelect={handleChatSelect} />
-        </div>
-        
-        {/* Chat Panel (80% of left column or full width on mobile) */}
-        <div className="w-full lg:w-[80%] h-full border-r border-border">
-          <ChatPanel onRunCommand={handleRunCommand} selectedChat={selectedChat} />
-        </div>
-      </div>
-      
-      {/* Right Column - Terminal (30% on desktop, 50% height on mobile) */}
-      <div className="w-full lg:w-[30%] h-1/2 lg:h-full">
-        <Terminal ref={terminalRef} />
-      </div>
+      <ResizablePanelGroup direction="horizontal">
+        {/* Main Content */}
+        <ResizablePanel defaultSize={70} minSize={30}>
+          <div className="w-full h-full flex flex-col lg:flex-row">
+            {/* Sidebar (20% of left column) - Desktop only */}
+            <div className="hidden lg:block w-[20%] h-full">
+              <ChatSidebar onChatSelect={handleChatSelect} />
+            </div>
+
+            {/* Chat Panel (80% of left column or full width on mobile) */}
+            <div className="w-full lg:w-[80%] h-full border-r border-border">
+              <ChatPanel onRunCommand={handleRunCommand} selectedChat={selectedChat} />
+            </div>
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        {/* Right Column - Terminal (30% on desktop, 50% height on mobile) */}
+        <ResizablePanel defaultSize={30} minSize={20}>
+          <div className="w-full h-full flex flex-col">
+            {/* Terminal tabs */}
+            <div className="flex items-center gap-2 p-2 border-b border-border bg-background">
+              {terminals.map((term) => (
+                <Button
+                  key={term.id}
+                  variant={activeTerminal === term.id ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveTerminal(term.id)}
+                  className="px-3 py-1"
+                >
+                  Terminal {term.id}
+                </Button>
+              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={addNewTerminal}
+                className="px-2"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Active terminal */}
+            <div className="flex-1">
+              {terminals.map((term) => (
+                <div
+                  key={term.id}
+                  className={`h-full ${activeTerminal === term.id ? 'block' : 'hidden'}`}
+                >
+                  <Terminal ref={term.ref} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }
