@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatPanel from '@/components/ChatPanel';
 import Terminal, { TerminalRefObject } from '@/components/Terminal';
@@ -18,15 +18,17 @@ export default function Index() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   
-  // Create refs at the component top level
-  const initialTerminalRef = useRef<TerminalRefObject>(null);
-  
   // Initialize the first terminal on component mount
   useEffect(() => {
     if (terminals.length === 0) {
-      setTerminals([{ id: '1', ref: initialTerminalRef }]);
+      // Create the first terminal
+      const firstTerminal: TerminalInstance = {
+        id: '1',
+        ref: { current: null }
+      };
+      setTerminals([firstTerminal]);
     }
-  }, [terminals.length]);
+  }, []);
 
   const handleRunCommand = (command: string) => {
     const terminal = terminals.find(t => t.id === activeTerminal);
@@ -43,13 +45,15 @@ export default function Index() {
     setShowSidebar(!showSidebar);
   };
 
-  const addNewTerminal = () => {
+  const addNewTerminal = useCallback(() => {
     const newId = (terminals.length + 1).toString();
-    // Create a new ref for the new terminal
-    const newTerminalRef = useRef<TerminalRefObject>(null);
-    setTerminals(prev => [...prev, { id: newId, ref: newTerminalRef }]);
+    const newTerminal: TerminalInstance = {
+      id: newId,
+      ref: { current: null }
+    };
+    setTerminals(prev => [...prev, newTerminal]);
     setActiveTerminal(newId);
-  };
+  }, [terminals.length]);
 
   // Add keyboard shortcut to close sidebar with Escape key
   useEffect(() => {
@@ -132,7 +136,11 @@ export default function Index() {
                   key={term.id}
                   className={`h-full ${activeTerminal === term.id ? 'block' : 'hidden'}`}
                 >
-                  <Terminal ref={term.ref} />
+                  <Terminal ref={(instance) => { 
+                    if (instance) {
+                      term.ref.current = instance;
+                    }
+                  }} />
                 </div>
               ))}
             </div>
