@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useWebContainer } from '@/hooks/useWebContainer';
 import { useToast } from '@/hooks/use-toast';
@@ -13,9 +12,8 @@ export interface TerminalRefObject {
 
 const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' }, ref) => {
   const [output, setOutput] = useState<string[]>([
-    '> DevOps Agent Terminal v1.0.0',
-    '> WebContainer initializing...',
-    '> Type or run commands to interact with your environment',
+    '> WebContainer Terminal v1.0.0',
+    '> Initializing environment...',
     '> '
   ]);
   const [command, setCommand] = useState('');
@@ -73,73 +71,25 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
       return;
     }
     
-    // If WebContainer is available and ready, try to use it
     if (webcontainer && ready && !simulationMode) {
       try {
-        if (cmd.startsWith('node ') || cmd === 'node') {
-          console.log("Executing Node command:", cmd);
-          const cmdParts = cmd.split(' ');
-          const process = await webcontainer.spawn('node', cmdParts.slice(1));
-          
-          let processOutput = '';
-          process.output.pipeTo(
-            new WritableStream({
-              write(chunk) {
-                processOutput += chunk;
-                setOutput(prev => [...prev, chunk]);
-              }
-            })
-          );
-          
-          const exitCode = await process.exit;
-          if (processOutput.trim() === '') {
-            setOutput(prev => [...prev, `Command completed with exit code ${exitCode}`, '> ']);
-          } else {
-            setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
-          }
-        } else if (cmd.startsWith('npm ')) {
-          console.log("Executing NPM command:", cmd);
-          const cmdParts = cmd.split(' ');
-          const process = await webcontainer.spawn('npm', cmdParts.slice(1));
-          
-          process.output.pipeTo(
-            new WritableStream({
-              write(chunk) {
-                setOutput(prev => [...prev, chunk]);
-              }
-            })
-          );
-          
-          const exitCode = await process.exit;
-          setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
-        } else {
-          // Try to run the command directly
-          try {
-            const cmdParts = cmd.split(' ');
-            const process = await webcontainer.spawn(cmdParts[0], cmdParts.slice(1));
-            
-            process.output.pipeTo(
-              new WritableStream({
-                write(chunk) {
-                  setOutput(prev => [...prev, chunk]);
-                }
-              })
-            );
-            
-            const exitCode = await process.exit;
-            setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
-          } catch (err) {
-            // Fallback to simulation for unsupported commands
-            console.warn(`Command '${cmd}' not supported, falling back to simulation:`, err);
-            simulateCommand(cmd);
-          }
-        }
+        const process = await webcontainer.spawn('sh', ['-c', cmd]);
+        
+        process.output.pipeTo(
+          new WritableStream({
+            write(chunk) {
+              setOutput(prev => [...prev, chunk]);
+            }
+          })
+        );
+        
+        const exitCode = await process.exit;
+        setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
       } catch (err) {
         console.error("Command execution error:", err);
         setOutput(prev => [...prev, `Error: ${err instanceof Error ? err.message : 'Unknown error'}`, '> ']);
       }
     } else {
-      // Run in simulation mode
       simulateCommand(cmd);
     }
   };

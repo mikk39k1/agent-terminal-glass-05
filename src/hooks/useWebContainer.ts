@@ -14,7 +14,6 @@ export function useWebContainer() {
     
     async function bootWebContainer() {
       try {
-        // Check if we're in an environment that supports WebContainer
         if (!window.crossOriginIsolated) {
           console.log("Environment is not cross-origin isolated, WebContainer requires COOP/COEP headers.");
           throw new Error('Cross-Origin Isolation required for WebContainer');
@@ -22,7 +21,6 @@ export function useWebContainer() {
         
         console.log("Attempting to boot WebContainer...");
         
-        // Boot WebContainer following the documentation
         let instance: WebContainer;
         try {
           instance = await WebContainer.boot();
@@ -36,53 +34,28 @@ export function useWebContainer() {
         console.log("WebContainer booted successfully!");
         setWebcontainer(instance);
         
-        // Set up a minimal project structure
-        try {
-          await instance.mount({
-            'index.js': {
-              file: {
-                contents: 'console.log("Hello from WebContainer!");',
-              },
+        // Set up initial files
+        await instance.mount({
+          'index.js': {
+            file: {
+              contents: 'console.log("WebContainer is ready!");',
             },
-            'package.json': {
-              file: {
-                contents: JSON.stringify({
-                  name: "webcontainer-project",
-                  type: "module",
-                  dependencies: {}
-                }, null, 2),
-              },
-            },
-          });
-          
-          console.log("Files mounted in WebContainer.");
-        } catch (mountError) {
-          console.error("Failed to mount files:", mountError);
-          throw new Error('Failed to mount files in WebContainer');
-        }
-        
-        // Create a basic package.json if one doesn't exist
-        try {
-          const packageJsonProcess = await instance.spawn('node', ['-e', `
-            const fs = require('fs');
-            if (!fs.existsSync('package.json')) {
-              fs.writeFileSync('package.json', JSON.stringify({
+          },
+          'package.json': {
+            file: {
+              contents: JSON.stringify({
                 name: "webcontainer-project",
                 type: "module",
+                scripts: {
+                  start: "node index.js"
+                },
                 dependencies: {}
-              }, null, 2));
-              console.log("Created package.json");
-            } else {
-              console.log("package.json already exists");
-            }
-          `]);
-          
-          await packageJsonProcess.exit;
-          console.log("Package.json check completed.");
-        } catch (pkgError) {
-          console.warn("Could not verify package.json:", pkgError);
-          // Continue even if this fails
-        }
+              }, null, 2),
+            },
+          },
+        });
+        
+        console.log("Initial files mounted successfully");
         
         if (!isMounted) return;
         
@@ -92,10 +65,9 @@ export function useWebContainer() {
         console.error("Error initializing WebContainer:", err);
         if (!isMounted) return;
         
-        // Set error message and enable simulation mode
         setError(err instanceof Error ? err.message : 'Unknown error');
         setSimulationMode(true);
-        setReady(true); // Allow terminal to be used in simulation mode
+        setReady(true);
         console.log("Falling back to simulation mode due to WebContainer error.");
       } finally {
         if (isMounted) {
