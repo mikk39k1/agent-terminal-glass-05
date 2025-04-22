@@ -254,28 +254,34 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
         </h2>
       </div>
       
-      <div 
-        ref={terminalOutputRef}
-        className="flex-1 bg-terminal p-4 font-mono text-sm text-terminal-text overflow-y-auto terminal-shadow"
-      >
-        {output.map((line, index) => (
-          <div key={index} className="whitespace-pre-wrap mb-1">
-            {line}
-            {index === output.length - 1 && (
-              <input
-                ref={inputRef}
-                type="text"
-                value={command}
-                onChange={(e) => setCommand(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="bg-transparent border-none outline-none w-full ml-2"
-                autoFocus
-                aria-label="Terminal input"
-              />
-            )}
-          </div>
-        ))}
-      </div>
+      {simulationMode ? (
+        <div 
+          ref={terminalOutputRef}
+          className="flex-1 bg-terminal p-4 font-mono text-sm text-terminal-text overflow-y-auto terminal-shadow"
+        >
+          {output.map((line, index) => (
+            <div key={index} className="whitespace-pre-wrap mb-1">
+              {line}
+              {index === output.length - 1 && (
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={command}
+                  onChange={(e) => setCommand(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="bg-transparent border-none outline-none w-full ml-2"
+                  autoFocus
+                  aria-label="Terminal input"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex-1 p-4 bg-background">
+          <WebContainerEditor />
+        </div>
+      )}
     </div>
   );
 });
