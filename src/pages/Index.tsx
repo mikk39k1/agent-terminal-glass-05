@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatPanel from '@/components/ChatPanel';
 import Terminal, { TerminalRefObject } from '@/components/Terminal';
@@ -24,7 +24,7 @@ export default function Index() {
       // Create the first terminal
       const firstTerminal: TerminalInstance = {
         id: '1',
-        ref: { current: null }
+        ref: useRef(null)
       };
       setTerminals([firstTerminal]);
     }
@@ -49,7 +49,7 @@ export default function Index() {
     const newId = (terminals.length + 1).toString();
     const newTerminal: TerminalInstance = {
       id: newId,
-      ref: { current: null }
+      ref: useRef(null)
     };
     setTerminals(prev => [...prev, newTerminal]);
     setActiveTerminal(newId);
@@ -136,11 +136,9 @@ export default function Index() {
                   key={term.id}
                   className={`h-full ${activeTerminal === term.id ? 'block' : 'hidden'}`}
                 >
-                  <Terminal ref={(instance) => { 
-                    if (instance) {
-                      term.ref.current = instance;
-                    }
-                  }} />
+                  <Terminal 
+                    ref={term.ref} 
+                  />
                 </div>
               ))}
             </div>
