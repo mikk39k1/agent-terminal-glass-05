@@ -16,25 +16,24 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
     '> '
   ]);
   const [command, setCommand] = useState('');
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const terminalOutputRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   
-  // Auto-scroll to bottom when output changes
   useEffect(() => {
     if (terminalOutputRef.current) {
       terminalOutputRef.current.scrollTop = terminalOutputRef.current.scrollHeight;
     }
   }, [output]);
   
-  // Function to execute a command
   const executeCommand = (cmd: string) => {
-    // Add command to output
     setOutput(prev => [...prev, `$ ${cmd}`]);
+    setCommandHistory(prev => [...prev, cmd]);
     
-    // Simulate command execution with fake output
     setTimeout(() => {
       let commandOutput: string[] = [];
       
-      // Simple command simulation
       if (cmd.includes('ls')) {
         commandOutput = ['app.js', 'package.json', 'node_modules/', 'README.md'];
       } else if (cmd.includes('docker')) {
@@ -54,16 +53,39 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
         commandOutput = ['Command executed successfully.'];
       }
       
-      // Update output with command result
       setOutput(prev => [...prev, ...commandOutput, '> ']);
     }, 500);
   };
   
-  // Expose the executeCommand method via ref
   useImperativeHandle(ref, () => ({
     executeCommand
   }));
-  
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && command.trim()) {
+      executeCommand(command.trim());
+      setCommand('');
+      setHistoryIndex(-1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (historyIndex < commandHistory.length - 1) {
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setCommand(commandHistory[commandHistory.length - 1 - newIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setCommand(commandHistory[commandHistory.length - 1 - newIndex]);
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setCommand('');
+      }
+    }
+  };
+
   return (
     <div className={`flex flex-col h-full ${className}`}>
       <div className="flex items-center justify-between p-3 border-b border-terminal-border">
@@ -77,12 +99,24 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
         {output.map((line, index) => (
           <div key={index} className="whitespace-pre-wrap mb-1">
             {line}
-            {index === output.length - 1 && <span className="inline-block w-2 h-4 ml-1 bg-terminal-text animate-blink" />}
+            {index === output.length - 1 && (
+              <input
+                ref={inputRef}
+                type="text"
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="bg-transparent border-none outline-none w-full ml-2"
+                autoFocus
+              />
+            )}
           </div>
         ))}
       </div>
     </div>
   );
 });
+
+Terminal.displayName = "Terminal";
 
 export default Terminal;
