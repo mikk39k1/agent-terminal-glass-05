@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useWebContainer } from '@/hooks/useWebContainer';
 
@@ -22,15 +23,16 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
   const terminalOutputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
-  const { webcontainer, loading, error } = useWebContainer();
+  const { webcontainer, loading, error, ready } = useWebContainer();
 
   useEffect(() => {
     if (error) {
-      setOutput(prev => [...prev, `Error: ${error}`, '> ']);
-    } else if (!loading && webcontainer) {
-      setOutput(prev => [...prev, 'WebContainer ready!', '> ']);
+      setOutput(prev => [...prev, `Error initializing WebContainer: ${error}`, '> ']);
+      console.error("WebContainer error:", error);
+    } else if (!loading && ready && webcontainer) {
+      setOutput(prev => [...prev, 'WebContainer is ready! You can run Node.js commands.', '> ']);
     }
-  }, [loading, error, webcontainer]);
+  }, [loading, error, ready, webcontainer]);
 
   useEffect(() => {
     if (terminalOutputRef.current) {
@@ -39,26 +41,60 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
   }, [output]);
 
   const executeCommand = async (cmd: string) => {
+    if (!cmd.trim()) return;
+    
     setOutput(prev => [...prev, `$ ${cmd}`]);
     setCommandHistory(prev => [...prev, cmd]);
     
-    if (!webcontainer) {
-      setOutput(prev => [...prev, 'WebContainer not ready', '> ']);
+    if (!webcontainer || !ready) {
+      setOutput(prev => [...prev, 'WebContainer not ready yet. Please wait...', '> ']);
       return;
     }
 
     try {
+      if (cmd === 'clear') {
+        setOutput(['> ']);
+        return;
+      }
+      
       if (cmd.startsWith('node ') || cmd === 'node') {
-        const process = await webcontainer.spawn('node', cmd.split(' ').slice(1));
-        process.output.pipeTo(new WritableStream({
-          write(chunk) {
-            setOutput(prev => [...prev, chunk]);
-          }
-        }));
+        console.log("Executing Node command:", cmd);
+        const cmdParts = cmd.split(' ');
+        const process = await webcontainer.spawn('node', cmdParts.slice(1));
+        
+        let processOutput = '';
+        process.output.pipeTo(
+          new WritableStream({
+            write(chunk) {
+              processOutput += chunk;
+              setOutput(prev => [...prev, chunk]);
+            }
+          })
+        );
+        
+        const exitCode = await process.exit;
+        if (processOutput.trim() === '') {
+          setOutput(prev => [...prev, `Command completed with exit code ${exitCode}`, '> ']);
+        } else {
+          setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
+        }
+      } else if (cmd.startsWith('npm ')) {
+        console.log("Executing NPM command:", cmd);
+        const cmdParts = cmd.split(' ');
+        const process = await webcontainer.spawn('npm', cmdParts.slice(1));
+        
+        process.output.pipeTo(
+          new WritableStream({
+            write(chunk) {
+              setOutput(prev => [...prev, chunk]);
+            }
+          })
+        );
         
         const exitCode = await process.exit;
         setOutput(prev => [...prev, `Process exited with code ${exitCode}`, '> ']);
       } else {
+        // Simulate commands for demo purposes
         setTimeout(() => {
           let commandOutput: string[] = [];
           
@@ -78,13 +114,14 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
               'db-statefulset-0          1/1     Running   0          7d',
               'redis-deployment-8f7c6c   1/1     Running   0          7d'];
           } else {
-            commandOutput = ['Command executed successfully.'];
+            commandOutput = ['Command executed in simulated environment.'];
           }
           
           setOutput(prev => [...prev, ...commandOutput, '> ']);
         }, 500);
       }
     } catch (err) {
+      console.error("Command execution error:", err);
       setOutput(prev => [...prev, `Error: ${err instanceof Error ? err.message : 'Unknown error'}`, '> ']);
     }
   };
@@ -121,7 +158,7 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
   return (
     <div className={`flex flex-col h-full ${className}`}>
       <div className="flex items-center justify-between p-3 border-b border-terminal-border">
-        <h2 className="font-medium">Terminal</h2>
+        <h2 className="font-medium">Terminal {ready ? '(WebContainer Ready)' : '(Initializing...)'}</h2>
       </div>
       
       <div 
@@ -140,6 +177,7 @@ const Terminal = forwardRef<TerminalRefObject, TerminalProps>(({ className = '' 
                 onKeyDown={handleKeyDown}
                 className="bg-transparent border-none outline-none w-full ml-2"
                 autoFocus
+                aria-label="Terminal input"
               />
             )}
           </div>
