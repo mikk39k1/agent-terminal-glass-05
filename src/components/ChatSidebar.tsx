@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { PlusCircle, ChevronRight, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,7 +28,11 @@ interface Chat {
   created_at: string;
 }
 
-export default function ChatSidebar() {
+interface ChatSidebarProps {
+  onChatSelect: (chatId: string | null) => void;
+}
+
+export default function ChatSidebar({ onChatSelect }: ChatSidebarProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
@@ -49,6 +52,12 @@ export default function ChatSidebar() {
       fetchChats(selectedProject);
     }
   }, [selectedProject]);
+
+  useEffect(() => {
+    if (selectedChat) {
+      onChatSelect(selectedChat);
+    }
+  }, [selectedChat, onChatSelect]);
 
   const fetchProjects = async () => {
     const { data, error } = await supabase

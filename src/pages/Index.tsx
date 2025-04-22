@@ -7,12 +7,16 @@ import Terminal, { TerminalRefObject } from '@/components/Terminal';
 export default function Index() {
   const terminalRef = useRef<TerminalRefObject>(null);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
   
   const handleRunCommand = (command: string) => {
     if (terminalRef.current) {
-      // Actually execute the command in the terminal
       terminalRef.current.executeCommand(command);
     }
+  };
+  
+  const handleChatSelect = (chatId: string | null) => {
+    setSelectedChat(chatId);
   };
   
   const toggleSidebar = () => {
@@ -37,7 +41,7 @@ export default function Index() {
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 lg:hidden ${
         showSidebar ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        <ChatSidebar />
+        <ChatSidebar onChatSelect={handleChatSelect} />
         <button 
           onClick={toggleSidebar}
           className="absolute top-1/2 right-0 transform translate-x-full -translate-y-1/2 bg-secondary p-2 rounded-r-md shadow-md"
@@ -53,12 +57,12 @@ export default function Index() {
       <div className="w-full lg:w-[70%] h-1/2 lg:h-full flex flex-col lg:flex-row">
         {/* Sidebar (20% of left column) - Desktop only */}
         <div className="hidden lg:block w-[20%] h-full">
-          <ChatSidebar />
+          <ChatSidebar onChatSelect={handleChatSelect} />
         </div>
         
         {/* Chat Panel (80% of left column or full width on mobile) */}
         <div className="w-full lg:w-[80%] h-full border-r border-border">
-          <ChatPanel onRunCommand={handleRunCommand} />
+          <ChatPanel onRunCommand={handleRunCommand} selectedChat={selectedChat} />
         </div>
       </div>
       
