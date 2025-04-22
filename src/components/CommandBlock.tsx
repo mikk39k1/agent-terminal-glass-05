@@ -22,7 +22,7 @@ export default function CommandBlock({ command, onRun }: CommandBlockProps) {
       
       <button 
         onClick={() => onRun(command)}
-        className={`absolute right-2 top-2 bg-black text-black px-3 py-1 rounded-md flex items-center gap-1 text-xs font-semibold transition-opacity hover:bg-black hover:text-white`}
+        className={`absolute right-2 top-2 bg-black textwhite px-3 py-1 rounded-md flex items-center gap-1 text-xs font-semibol`}
       >
         <Play size={14} />
         Run
